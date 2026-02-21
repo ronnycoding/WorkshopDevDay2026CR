@@ -1,6 +1,37 @@
 import { relations, sql } from "drizzle-orm";
 import { index, sqliteTable } from "drizzle-orm/sqlite-core";
 
+// TODO status enum values
+export const todoStatusValues = ["PENDING", "IN_PROGRESS", "DONE"] as const;
+export type TodoStatus = (typeof todoStatusValues)[number];
+
+// TODO table
+export const todo = sqliteTable(
+	"todo",
+	(d) => ({
+		id: d.integer({ mode: "number" }).primaryKey({ autoIncrement: true }),
+		description: d.text({ length: 500 }).notNull(),
+		status: d.text({ length: 20 }).notNull().default("PENDING"),
+		userId: d
+			.text({ length: 255 })
+			.notNull()
+			.references(() => user.id),
+		createdAt: d
+			.integer({ mode: "timestamp" })
+			.default(sql`(unixepoch())`)
+			.notNull(),
+		updatedAt: d.integer({ mode: "timestamp" }).$onUpdate(() => new Date()),
+	}),
+	(t) => [
+		index("todo_user_id_idx").on(t.userId),
+		index("todo_status_idx").on(t.status),
+	],
+);
+
+export const todoRelations = relations(todo, ({ one }) => ({
+	user: one(user, { fields: [todo.userId], references: [user.id] }),
+}));
+
 /**
  * Multi-project schema prefix helper
  */
